@@ -62,3 +62,29 @@ def save_articles(articles):
                 new_count += cursor.rowcount
 
     return new_count
+
+def get_articles_for_grouping():
+    """Return (id, title, summary) for every article."""
+    with closing(get_connection()) as conn:
+        return conn.execute(
+            "SELECT id, title, summary FROM articles"
+        ).fetchall()
+
+
+def save_clusters(clusters):
+    """clusters is a list of (label, [article_ids]). Replaces the old grouping."""
+    with closing(get_connection()) as conn:
+        with conn:
+            # Order matters because foreign keys are on: unlink, delete, re-insert.
+            conn.execute("UPDATE articles SET cluster_id = NULL")
+            conn.execute("DELETE FROM clusters")
+            for label, article_ids in clusters:
+                cursor = conn.execute(
+                    "INSERT INTO clusters (label) VALUES (?)", (label,)
+                )
+                cluster_id = cursor.lastrowid
+                for article_id in article_ids:
+                    conn.execute(
+                        "UPDATE articles SET cluster_id = ? WHERE id = ?",
+                        (cluster_id, article_id),
+                    )
