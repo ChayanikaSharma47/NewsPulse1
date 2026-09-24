@@ -1,0 +1,19 @@
+[1mdiff --git a/scraper/main.py b/scraper/main.py[m
+[1mindex bd0d543..460a328 100644[m
+[1m--- a/scraper/main.py[m
+[1m+++ b/scraper/main.py[m
+[36m@@ -1,5 +1,6 @@[m
+ from fetch_feeds import fetch_all[m
+ from database import init_db, save_articles[m
+[32m+[m[32mimport cluster[m
+ [m
+ [m
+ def run():[m
+[36m@@ -8,6 +9,7 @@[m [mdef run():[m
+     new_count = save_articles(articles)[m
+     print(f"Saved {new_count} new articles "[m
+           f"({len(articles) - new_count} already existed)")[m
+[32m+[m[32m    cluster.run()[m
+ [m
+ [m
+ if __name__ == "__main__":[m
