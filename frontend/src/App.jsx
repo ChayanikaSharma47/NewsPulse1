@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getTimeline } from "./api";
+import TimelineChart from "./TimelineChart";
 
 function App() {
   const [clusters, setClusters] = useState([]);
@@ -19,10 +20,17 @@ function App() {
   return (
     <div>
       <h1>News Pulse</h1>
+
+      <TimelineChart
+        clusters={clusters}
+        onSelectCluster={(id) => console.log("selected", id)}
+      />
+
       <ul>
         {clusters.map((c) => (
           <li key={c.id}>
-            {c.label} — {c.count} articles ({new Date(c.start).toLocaleDateString()} to{" "}
+            {c.label} — {c.count} articles (
+            {new Date(c.start).toLocaleDateString()} to{" "}
             {new Date(c.end).toLocaleDateString()})
           </li>
         ))}
@@ -31,4 +39,5 @@ function App() {
   );
 }
 
-export default App
+export default App;
+
