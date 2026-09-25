@@ -13,9 +13,15 @@ function App() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(null);
 
+  const [selectedSources, setSelectedSources] = useState(null);
+
   useEffect(() => {
     getTimeline()
-      .then(setClusters)
+      .then((data) => {
+        setClusters(data);
+        const allSources = new Set(data.flatMap((c) => c.sources));
+        setSelectedSources(allSources);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -36,12 +42,43 @@ function App() {
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
 
+  const allSources = [...new Set(clusters.flatMap((c) => c.sources))];
+
+  const toggleSource = (source) => {
+    setSelectedSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(source)) {
+        next.delete(source);
+      } else {
+        next.add(source);
+      }
+      return next;
+    });
+  };
+
+  const filteredClusters = clusters.filter((c) =>
+    c.sources.some((s) => selectedSources.has(s))
+  );
+
   return (
     <div>
       <h1>News Pulse</h1>
 
+      <div style={{ margin: "12px 0" }}>
+        {allSources.map((source) => (
+          <label key={source} style={{ marginRight: "12px" }}>
+            <input
+              type="checkbox"
+              checked={selectedSources.has(source)}
+              onChange={() => toggleSource(source)}
+            />
+            {source}
+          </label>
+        ))}
+      </div>
+
       <TimelineChart
-        clusters={clusters}
+        clusters={filteredClusters}
         onSelectCluster={(id) => setSelectedClusterId(id)}
       />
 
@@ -54,7 +91,7 @@ function App() {
       )}
 
       <ul>
-        {clusters.map((c) => (
+        {filteredClusters.map((c) => (
           <li key={c.id}>
             {c.label} — {c.count} articles (
             {new Date(c.start).toLocaleDateString()} to{" "}
