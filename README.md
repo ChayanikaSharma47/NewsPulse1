@@ -1,6 +1,6 @@
 # News Pulse
 
-A solo full-stack project built for the Xponentium internship take-home assessment: a Python scraper collects news articles from RSS feeds, groups related articles into story clusters, a Node.js/Express API serves that data, and a React frontend visualizes it as an interactive timeline.
+A solo full-stack project: a Python scraper collects news articles from RSS feeds, groups related articles into story clusters, a Node.js/Express API serves that data, and a React frontend visualizes it as an interactive timeline.
 
 ## Stack:
 
