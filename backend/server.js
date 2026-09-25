@@ -4,6 +4,8 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const Database = require("better-sqlite3");
+const { spawn } = require("child_process");
+const crypto = require("crypto");
 
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.resolve(__dirname, process.env.DB_PATH || "../scraper/news.db");
@@ -11,11 +13,68 @@ const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173")
   .split(",")
   .map((origin) => origin.trim());
 
+const SCRAPER_DIR = path.resolve(__dirname, "../scraper");
+const PYTHON_CMD = process.env.PYTHON_CMD
+  ? path.resolve(__dirname, process.env.PYTHON_CMD)
+  : "python";
+const INGEST_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+
+
+const jobs = new Map(); // jobId -> { status, startedAt, finishedAt, error }
+let activeJob = null;   // jobId of the job currently running, or null
+
 const app = express();
 app.disable("x-powered-by");
 app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
 
+
+function startIngestJob() {
+  const jobId = crypto.randomUUID();
+  jobs.set(jobId, { status: "running", startedAt: new Date().toISOString() });
+  activeJob = jobId;
+
+  const child = spawn(PYTHON_CMD, ["main.py"], { cwd: SCRAPER_DIR });
+
+  const timeout = setTimeout(() => {
+    child.kill();
+  }, INGEST_TIMEOUT_MS);
+
+  let stderrOutput = "";
+  child.stderr.on("data", (chunk) => {
+    stderrOutput += chunk.toString();
+  });
+
+  child.on("error", (err) => {
+    clearTimeout(timeout);
+    jobs.set(jobId, {
+      status: "failed",
+      startedAt: jobs.get(jobId).startedAt,
+      finishedAt: new Date().toISOString(),
+      error: `Could not start Python: ${err.message}`,
+    });
+    activeJob = null;
+  });
+
+  child.on("close", (code) => {
+    clearTimeout(timeout);
+    const startedAt = jobs.get(jobId).startedAt;
+    if (code === 0) {
+      jobs.set(jobId, { status: "done", startedAt, finishedAt: new Date().toISOString() });
+    } else {
+      jobs.set(jobId, {
+        status: "failed",
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        error: stderrOutput.slice(-500) || `Process exited with code ${code}`,
+      });
+    }
+    activeJob = null;
+  });
+
+  return jobId;
+}
 // Open the database read-only for one query, then close it again.
 function query(work) {
   if (!fs.existsSync(DB_PATH)) {
@@ -102,6 +161,22 @@ app.get("/timeline", (req, res) => {
   );
 });
 
+app.post("/ingest/trigger", (req, res) => {
+  if (activeJob) {
+    return res.status(409).json({ error: "An ingest job is already running", jobId: activeJob });
+  }
+  const jobId = startIngestJob();
+  res.status(202).json({ jobId, status: "running" });
+});
+
+app.get("/ingest/status/:jobId", (req, res) => {
+  const job = jobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ error: "Job not found" });
+  }
+  res.json({ jobId: req.params.jobId, ...job });
+});
+
 // Anything else: 404
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
@@ -119,3 +194,4 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 });
+
