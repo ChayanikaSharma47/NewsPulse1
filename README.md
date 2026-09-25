@@ -68,7 +68,7 @@ Open:http://localhost:5173
 The frontend fetches /timeline from the backend and renders the timeline, cluster details, and source filter.
 
 ## Architecture overview
-### 🧩 Project Structure & Components
+### Project Structure & Components
 
 | Component | Technology | Primary Responsibilities |
 | :--- | :--- | :--- |
