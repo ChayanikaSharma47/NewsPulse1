@@ -135,6 +135,4 @@ Keyword-overlap clustering can sometimes merge unrelated stories that happen to 
 
 The scraper currently covers BBC, NPR, and The Guardian. Adding more sources is straightforward since the scraper is feed-driven, but wasn't prioritized for this version.
 
-Video walkthrough
 
-[Link to be added]
